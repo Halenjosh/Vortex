@@ -1,0 +1,1869 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Vortex IDE</title>
+
+    <style>
+        .explorer h3 {
+            margin: 0;
+            padding: 10px 15px;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #858585;
+            letter-spacing: 0.5px;
+            user-select: none;
+        }
+
+        .explorer ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .explorer li {
+            font-size: 13px;
+            color: #ccc;
+            user-select: none;
+        }
+
+        .explorer-item {
+            padding-top: 4px;
+            padding-bottom: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+
+        .explorer-item:hover {
+            background: #2a2d2e;
+            color: #fff;
+        }
+
+        .explorer-chevron {
+            width: 16px;
+            height: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s;
+            font-size: 10px;
+            color: #888;
+        }
+
+        .explorer-item.folder.open .explorer-chevron {
+            transform: rotate(90deg);
+        }
+
+        .explorer-icon {
+            width: 16px;
+            height: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 6px;
+            font-size: 13px;
+        }
+
+        .icon-js {
+            color: #cbcb41;
+            font-weight: bold;
+            font-family: monospace;
+            font-size: 11px;
+        }
+
+        .icon-json {
+            color: #8b949e;
+            font-weight: bold;
+            font-family: monospace;
+            font-size: 10px;
+        }
+
+        .icon-html {
+            color: #e34c26;
+            font-weight: bold;
+            font-family: monospace;
+            font-size: 10px;
+        }
+
+        .icon-css {
+            color: #563d7c;
+            font-weight: bold;
+            font-family: monospace;
+            font-size: 10px;
+        }
+
+        .icon-md {
+            color: #083fa1;
+            font-weight: bold;
+            font-family: monospace;
+            font-size: 10px;
+        }
+
+        .explorer-children {
+            display: none;
+        }
+
+        .explorer-children.open {
+            display: block;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: #1e1e1e;
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+            /* Prevent native DOM sweeping across Monaco editor */
+            -webkit-user-select: none;
+        }
+
+        header {
+            background: #111;
+            padding: 8px;
+            font-size: 16px;
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            /* Prevent body stretching */
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #252526;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #111;
+            min-height: 0;
+            /* Important for flex children scrolling */
+        }
+
+        .sidebar-tabs {
+            display: flex;
+            background: #1e1e1e;
+        }
+
+        .sidebar-tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            font-size: 11px;
+            text-transform: uppercase;
+            cursor: pointer;
+            color: #858585;
+            user-select: none;
+            border-bottom: 2px solid transparent;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .sidebar-tab.active {
+            color: #fff;
+            border-bottom: 2px solid #007acc;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .sidebar-content.active {
+            display: flex;
+        }
+
+        /* EXPLORER SPECIFIC */
+        #panel-explorer {
+            overflow: hidden;
+        }
+
+        #file-list {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        /* SEARCH SECIFIC */
+        #search-results-list {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+        }
+
+        /* GIT SPECIFIC */
+        #git-status-list {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .git-item {
+            padding: 4px 15px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            cursor: default;
+        }
+
+        .git-status-tag {
+            font-weight: bold;
+            font-family: monospace;
+            width: 20px;
+        }
+
+        .status-M {
+            color: #e2c08d;
+        }
+
+        /* Modified */
+        .status-A {
+            color: #73c991;
+        }
+
+        /* Added */
+        .status-D {
+            color: #f14c4c;
+        }
+
+        /* Deleted */
+        .status-U {
+            color: #3daee9;
+        }
+
+        /* Untracked */
+
+        /* SEARCH SECIFIC */
+        #panel-search ul {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .explorer-header {
+            margin: 0;
+            padding: 10px 15px;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #ccc;
+            letter-spacing: 0.5px;
+            user-select: none;
+        }
+
+        /* SEARCH PANEL STYLES */
+        .search-container {
+            padding: 10px;
+        }
+
+        #global-search-input {
+            width: 100%;
+            background: #3c3c3c;
+            border: 1px solid #3c3c3c;
+            color: #fff;
+            padding: 6px 8px;
+            font-size: 13px;
+            border-radius: 3px;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        #global-search-input:focus {
+            border: 1px solid #007acc;
+        }
+
+        #search-results-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .search-result {
+            padding: 6px 15px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #ccc;
+            border-bottom: 1px solid #333;
+        }
+
+        .search-result:hover {
+            background: #2a2d2e;
+        }
+
+        .search-result-file {
+            color: #fff;
+            font-weight: bold;
+            margin-bottom: 4px;
+            display: block;
+            word-break: break-all;
+        }
+
+        .search-result-text {
+            color: #858585;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+        }
+
+        /* GIT PANEL STYLES */
+        .git-container {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border-bottom: 1px solid #333;
+        }
+
+        #git-commit-msg {
+            width: 100%;
+            background: #3c3c3c;
+            border: 1px solid #3c3c3c;
+            color: #fff;
+            padding: 6px 8px;
+            font-size: 13px;
+            border-radius: 3px;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .git-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn {
+            background: #0e639c;
+            color: #fff;
+            border: none;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 2px;
+            flex: 1;
+        }
+
+        .btn:hover {
+            background: #1177bb;
+        }
+
+        .btn.secondary {
+            background: #333;
+        }
+
+        .btn.secondary:hover {
+            background: #444;
+        }
+
+        #git-status-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .git-item {
+            padding: 4px 15px;
+            font-size: 13px;
+            color: #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .git-item:hover {
+            background: #2a2d2e;
+        }
+
+        .git-status-badge {
+            font-weight: bold;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+
+        .status-M {
+            color: #e2c08d;
+        }
+
+        /* Modified / Yellow */
+        .status-D {
+            color: #c74e39;
+        }
+
+        /* Deleted / Red */
+        .status-U {
+            color: #73c991;
+        }
+
+        /* Untracked / Green */
+        .status-\?\? {
+            color: #73c991;
+        }
+
+        /* AI PANEL STYLES */
+        #ai-panel {
+            width: 300px;
+            background: #252526;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid #111;
+        }
+
+        .ai-mode-toggle {
+            font-size: 10px;
+            padding: 3px 6px;
+            cursor: pointer;
+            border-radius: 3px;
+            color: #888;
+            user-select: none;
+            font-weight: bold;
+        }
+        
+        .ai-mode-toggle.active {
+            background: #007acc;
+            color: #fff;
+        }
+        
+        .ai-mode-toggle.active#ai-mode-agent {
+            background: #c74e39; /* Agent mode warning red */
+        }
+
+        #ai-response {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            user-select: text;
+            /* Allow users to copy AI response text natively */
+            -webkit-user-select: text;
+            min-height: 0;
+            /* Crucial for internal scrolling */
+        }
+
+        .ai-message {
+            max-width: 90%;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #ccc;
+        }
+
+        .ai-message.user {
+            color: #fff;
+            border-left: 3px solid #007acc;
+            padding-left: 10px;
+        }
+
+        .ai-message.bot {
+            color: #d4d4d4;
+            background: #1e1e1e;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .ai-message pre {
+            background: #000;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 5px 0;
+        }
+
+        .ai-message code {
+            font-family: monospace;
+            color: #cecece;
+        }
+
+        .ai-input-container {
+            padding: 10px;
+            border-top: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #ai-input {
+            width: 100%;
+            background: #3c3c3c;
+            border: 1px solid #3c3c3c;
+            color: #fff;
+            padding: 8px;
+            font-size: 13px;
+            border-radius: 3px;
+            outline: none;
+            box-sizing: border-box;
+            resize: none;
+            height: 60px;
+            font-family: inherit;
+        }
+
+        #ai-input:focus {
+            border: 1px solid #007acc;
+        }
+
+        #ai-send {
+            background: #0e639c;
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            border-radius: 2px;
+            align-self: flex-end;
+        }
+
+        #ai-send:hover {
+            background: #1177bb;
+        }
+
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #1e1e1e;
+        }
+
+        .tabs {
+            display: flex;
+            background: #252526;
+            border-bottom: 1px solid #111;
+            overflow-x: auto;
+        }
+
+        .tabs::-webkit-scrollbar {
+            height: 2px;
+        }
+
+        .tabs::-webkit-scrollbar-thumb {
+            background: #555;
+        }
+
+        .tab {
+            padding: 8px 15px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #858585;
+            border-right: 1px solid #1e1e1e;
+            user-select: none;
+            background: #2d2d2d;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-close {
+            font-size: 14px;
+            visibility: hidden;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 3px;
+        }
+
+        .tab:hover .tab-close,
+        .tab.active .tab-close {
+            visibility: visible;
+        }
+
+        .tab-close:hover {
+            background: #444;
+            color: #fff;
+        }
+
+        .tab:hover {
+            background: #333;
+        }
+
+        .tab.active {
+            background: #1e1e1e;
+            color: #fff;
+            border-top: 1px solid #007acc;
+            /* VS Code blue accent */
+        }
+
+        .terminal {
+            height: 150px;
+            background: #000;
+            padding: 5px;
+            font-family: monospace;
+        }
+
+        /* COMMAND PALETTE */
+        #command-palette {
+            display: none;
+            position: fixed;
+            top: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 500px;
+            background: #1e1e1e;
+            border: 1px solid #454545;
+            border-radius: 6px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            flex-direction: column;
+            color: #ccc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        #command-palette.active {
+            display: flex;
+        }
+
+        #command-input {
+            background: transparent;
+            border: none;
+            color: #fff;
+            padding: 12px 15px;
+            font-size: 14px;
+            outline: none;
+            border-bottom: 1px solid #333;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        #command-list {
+            max-height: 250px;
+            overflow-y: auto;
+            list-style: none;
+            margin: 0;
+            padding: 5px 0;
+        }
+
+        .command-item {
+            padding: 8px 15px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .command-item:hover,
+        .command-item.selected {
+            background: #0060c0;
+            /* VS Code blue selection */
+            color: #fff;
+        }
+
+        .git-actions {
+            padding: 10px;
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            border-radius: 2px;
+        }
+
+        .btn.secondary {
+            background: #3a3d41;
+        }
+
+        #git-commit-msg {
+            width: calc(100% - 20px);
+            margin: 10px;
+            background: #3c3c3c;
+            color: white;
+            border: 1px solid #454545;
+            padding: 5px;
+            font-size: 12px;
+            outline: none;
+        }
+
+        /* LAYOUT TOGGLES */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #111;
+            padding: 5px 15px;
+            height: 35px;
+            box-sizing: border-box;
+        }
+
+        .layout-toggles {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .layout-icon {
+            cursor: pointer;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .layout-icon:hover {
+            opacity: 1;
+        }
+
+        .layout-icon.active {
+            opacity: 1;
+        }
+
+        .layout-icon svg {
+            width: 18px;
+            height: 18px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.5;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <header>
+        <div style="display:flex; gap: 10px; align-items:center;">
+            <span>🌪️ Vortex IDE</span>
+        </div>
+        <div class="layout-toggles">
+            <!-- Sidebar Toggle -->
+            <div class="layout-icon active" id="toggle-sidebar" onclick="toggleLayout('sidebar')"
+                title="Toggle Sidebar">
+                <svg viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <path d="M9 3v18" />
+                </svg>
+            </div>
+            <!-- Terminal Toggle -->
+            <div class="layout-icon active" id="toggle-terminal" onclick="toggleLayout('terminal')"
+                title="Toggle Panel">
+                <svg viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <path d="M3 15h18" />
+                </svg>
+            </div>
+            <!-- AI Panel Toggle -->
+            <div class="layout-icon active" id="toggle-ai" onclick="toggleLayout('ai')" title="Toggle AI Assistant">
+                <svg viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                    <path d="M15 3v18" />
+                </svg>
+            </div>
+        </div>
+    </header>
+
+    <!-- COMMAND PALETTE OVERLAY -->
+    <div id="command-palette">
+        <input type="text" id="command-input" placeholder="Type a command..." autocomplete="off">
+        <ul id="command-list"></ul>
+    </div>
+
+    <!-- AI INLINE EDIT DIALOG -->
+    <div id="ai-edit-dialog"
+        style="display: none; position: fixed; top: 15%; left: 50%; transform: translateX(-50%); width: 450px; background: #252526; border: 1px solid #454545; border-radius: 6px; z-index: 2000; box-shadow: 0 4px 20px rgba(0,0,0,0.6); padding: 12px; flex-direction: column; gap: 8px;">
+        <div style="font-size: 13px; font-weight: 600; color: #ccc;">AI Edit Instruction</div>
+        <input type="text" id="ai-edit-input" placeholder="What should the AI do with this code?" autocomplete="off"
+            style="width: 100%; background: #3c3c3c; border: 1px solid #454545; color: white; padding: 8px 10px; font-size: 13px; border-radius: 4px; outline: none; box-sizing: border-box;">
+        <div style="font-size: 11px; color: #888; text-align: right;">Press Enter to submit, Esc to cancel.</div>
+    </div>
+
+    <div class="main">
+
+        <div class="sidebar">
+            <div class="sidebar-tabs">
+                <div class="sidebar-tab active" id="tab-explorer" onclick="switchSidebar('explorer')">Explorer</div>
+                <div class="sidebar-tab" id="tab-search" onclick="switchSidebar('search')">Search</div>
+                <div class="sidebar-tab" id="tab-git" onclick="switchSidebar('git')">Source Control</div>
+            </div>
+
+            <!-- EXPLORER PANEL -->
+            <div class="sidebar-content active" id="panel-explorer">
+                <h3 class="explorer-header">Project</h3>
+                <ul id="file-list" class="explorer"></ul>
+            </div>
+
+            <!-- SEARCH PANEL -->
+            <div class="sidebar-content" id="panel-search">
+                <div class="search-container">
+                    <input type="text" id="global-search-input" placeholder="Search..." autocomplete="off">
+                </div>
+                <ul id="search-results-list"></ul>
+            </div>
+
+            <!-- GIT PANEL -->
+            <div class="sidebar-content" id="panel-git">
+                <div class="git-container">
+                    <input type="text" id="git-commit-msg" placeholder="Message (Cmd+Enter to commit)"
+                        autocomplete="off">
+                    <div class="git-actions">
+                        <button class="btn" onclick="commitChanges()">Commit</button>
+                        <button class="btn secondary" onclick="refreshGit()">Refresh</button>
+                    </div>
+                </div>
+                <ul id="git-status-list"></ul>
+            </div>
+        </div>
+
+        <div class="editor-container">
+            <div class="tabs" id="tabs-container"></div>
+            <div id="editor" style="flex: 1; min-height: 0; width: 100%;"></div>
+            <div class="terminal" style="display: none;">
+                <div id="terminal" style="height:100%;"></div>
+            </div>
+        </div>
+
+        <!-- AI ASSISTANT PANEL -->
+        <div id="ai-panel">
+            <div class="sidebar-tabs" style="border-bottom: 1px solid #111; align-items: center; justify-content: space-between;">
+                <div class="sidebar-tab active" style="text-align: left; padding-left: 15px; cursor: default; flex: 1;">🤖 AI Copilot</div>
+                <div style="display: flex; padding-right: 10px; gap: 4px;">
+                    <span id="ai-mode-ask" class="ai-mode-toggle active" onclick="setAiMode('ASK')">ASK</span>
+                    <span id="ai-mode-agent" class="ai-mode-toggle" onclick="setAiMode('AGENT')">AGENT</span>
+                </div>
+            </div>
+            <div id="ai-response"></div>
+            <div class="ai-input-container">
+                <textarea id="ai-input" placeholder="Ask AI a question (Cmd+Enter to send)..."></textarea>
+                <button id="ai-send">Ask AI</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        window.electron = require("electron");
+        window.Terminal = require("@xterm/xterm").Terminal;
+    </script>
+
+    <!-- MONACO EDITOR -->
+    <script src="node_modules/monaco-editor/min/vs/loader.js"></script>
+
+    <script>
+        require.config({ paths: { vs: "node_modules/monaco-editor/min/vs" } });
+
+        require(["vs/editor/editor.main"], function () {
+
+            window.editor = monaco.editor.create(document.getElementById("editor"), {
+                value: "// Welcome to Vortex IDE\n\nconsole.log('Hello Vortex');",
+                language: "javascript",
+                theme: "vs-dark",
+                automaticLayout: true
+            });
+
+        });
+    </script>
+
+    <!-- XTERM TERMINAL -->
+
+    <link rel="stylesheet" href="node_modules/@xterm/xterm/css/xterm.css">
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+
+            const term = new Terminal();
+
+            term.open(document.getElementById("terminal"));
+
+            // 1. Capture keyboard input from xterm:
+            term.onData(data => {
+                // 2. Send that data to Electron main process:
+                window.electron.ipcRenderer.send("terminal-intoData", data);
+            });
+
+            // 3. Listen for shell output from main process:
+            window.electron.ipcRenderer.on("terminal-incData", (event, data) => {
+                // 4. Display the output in xterm:
+                term.write(data);
+            });
+
+        });
+
+        let currentPaletteMode = 'commands'; // 'commands' or 'files'
+
+        // Command Palette Logic
+        const commands = [
+            { name: "Reload Window", action: () => window.location.reload() },
+            { name: "AI Edit", action: () => alert("Use Cmd+K / Ctrl+K for AI Edit.") },
+            { 
+                name: "Explain Selected Code", 
+                action: async () => {
+                    if (!window.editor) return;
+                    const selection = window.editor.getSelection();
+                    const selectedCode = window.editor.getModel().getValueInRange(selection);
+                    if (!selectedCode || selectedCode.trim() === "") {
+                        alert("Please select some code in the editor first.");
+                        return;
+                    }
+                    try {
+                        document.body.style.cursor = 'wait';
+                        const result = await window.electron.ipcRenderer.invoke("ai-query", {
+                            question: "Explain this code",
+                            fileContent: selectedCode
+                        });
+                        alert(result);
+                    } catch (err) {
+                        alert("Error: " + err.message);
+                    } finally {
+                        document.body.style.cursor = 'default';
+                    }
+                } 
+            },
+            { name: "Open Folder", action: () => window.electron.ipcRenderer.send("open-folder") },
+            { name: "Save File", action: () => forceSaveAction() },
+            { name: "Close Active Tab", action: () => closeTab(activeTabPath) },
+            { name: "Toggle Terminal", action: () => document.querySelector('.terminal').style.display = document.querySelector('.terminal').style.display === 'none' ? 'block' : 'none' }
+        ];
+
+        let selectedCommandIndex = 0;
+        const palette = document.getElementById('command-palette');
+        const searchInput = document.getElementById('command-input');
+        const listEl = document.getElementById('command-list');
+
+        function forceSaveAction() {
+            if (!activeTabPath) return;
+            const file = openedFiles[activeTabPath];
+            if (file && file.isUnsaved) {
+                window.electron.ipcRenderer.invoke("save-file", {
+                    path: file.path,
+                    content: window.editor.getValue()
+                }).then(() => {
+                    file.isUnsaved = false;
+                    renderTabs();
+                });
+            }
+        }
+
+        // Custom Promiser logic mimicking window.prompt (since Electron blocks native window.prompt)
+        function askAiInstruction() {
+            return new Promise((resolve) => {
+                const dialog = document.getElementById('ai-edit-dialog');
+                const input = document.getElementById('ai-edit-input');
+
+                dialog.style.display = 'flex';
+                input.value = '';
+                input.focus();
+
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        cleanup();
+                        resolve(input.value);
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        cleanup();
+                        resolve(null);
+                    }
+                };
+
+                const cleanup = () => {
+                    input.removeEventListener('keydown', handleKeyDown);
+                    dialog.style.display = 'none';
+                    if (window.editor) window.editor.focus();
+                };
+
+                input.addEventListener('keydown', handleKeyDown);
+            });
+        }
+
+        async function openFileFromQuickOpen(item) {
+            // Check if file is already open
+            if (openedFiles[item.path]) {
+                switchTab(item.path);
+                return;
+            }
+
+            // If not, fetch it asynchronously via IPC
+            const content = await ipcRenderer.invoke("read-file", item.path);
+            const lang = getLanguage(item.name);
+
+            // Store it into the Memory Pool
+            openedFiles[item.path] = {
+                name: item.name,
+                path: item.path,
+                content: content,
+                language: lang
+            };
+
+            // Activate and Switch
+            switchTab(item.path);
+        }
+
+        function renderPaletteList(filter = "") {
+            listEl.innerHTML = "";
+            let dataSource = currentPaletteMode === 'commands' ? commands : allProjectFiles;
+
+            const filteredItems = dataSource.filter(item =>
+                currentPaletteMode === 'commands'
+                    ? item.name.toLowerCase().includes(filter.toLowerCase())
+                    : item.path.toLowerCase().includes(filter.toLowerCase())
+            );
+
+            // Re-bound index gracefully
+            if (selectedCommandIndex >= filteredItems.length) selectedCommandIndex = Math.max(0, filteredItems.length - 1);
+
+            filteredItems.forEach((item, index) => {
+                const li = document.createElement("li");
+                li.className = "command-item" + (index === selectedCommandIndex ? " selected" : "");
+
+                // Display specific UI based on source
+                if (currentPaletteMode === 'commands') {
+                    li.textContent = item.name;
+                } else {
+                    // Quick File Open UI logic displaying trailing filename
+                    const rootName = document.createElement("span");
+                    rootName.style.color = "#fff";
+                    rootName.textContent = item.name;
+
+                    const fullPath = document.createElement("span");
+                    fullPath.style.color = "#777";
+                    fullPath.style.fontSize = "11px";
+                    fullPath.style.marginLeft = "10px";
+                    fullPath.textContent = item.path.split('/').slice(-3).join('/'); // show last 3 directories
+
+                    li.appendChild(rootName);
+                    li.appendChild(fullPath);
+                }
+
+                // Allow mouse clicks over the items explicitly overriding hover behavior
+                li.onmouseover = () => {
+                    selectedCommandIndex = index;
+                    Array.from(listEl.children).forEach((child, i) => {
+                        child.classList.toggle('selected', i === index);
+                    });
+                };
+                li.onclick = () => {
+                    if (currentPaletteMode === 'commands') {
+                        item.action();
+                    } else {
+                        openFileFromQuickOpen(item);
+                    }
+                    palette.classList.remove("active");
+                };
+
+                listEl.appendChild(li);
+            });
+            return filteredItems;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            const isControlOrCommand = e.metaKey || e.ctrlKey;
+
+            // Global Trigger: Cmd / Ctrl + P (Quick File Open)
+            if (isControlOrCommand && e.key.toLowerCase() === 'p' && !e.shiftKey) {
+                e.preventDefault();
+                currentPaletteMode = 'files';
+                palette.classList.add("active");
+                searchInput.placeholder = "Search files by name...";
+                searchInput.value = "";
+                selectedCommandIndex = 0;
+                renderPaletteList();
+                searchInput.focus();
+                return;
+            }
+
+            // Global Trigger: Cmd / Ctrl + Shift + P Or F1 (Open Command Palette)
+            if (e.key === 'F1' || (isControlOrCommand && e.shiftKey && e.key.toLowerCase() === 'p')) {
+                e.preventDefault();
+                currentPaletteMode = 'commands';
+                palette.classList.add("active");
+                searchInput.placeholder = "Type a command...";
+                searchInput.value = "";
+                selectedCommandIndex = 0;
+                renderPaletteList();
+                searchInput.focus();
+                return;
+            }
+
+            // Global Trigger: Cmd / Ctrl + O (Open Folder)
+            if (isControlOrCommand && e.key.toLowerCase() === 'o') {
+                e.preventDefault();
+                window.electron.ipcRenderer.send("open-folder");
+                return;
+            }
+
+            // Global Trigger: Ctrl + ` (Toggle Terminal)
+            if (e.ctrlKey && e.key === '`') {
+                e.preventDefault();
+                toggleLayout('terminal');
+                return;
+            }
+
+            // Keyboard Navigation within Palette
+            if (palette.classList.contains("active")) {
+                let dataSource = currentPaletteMode === 'commands' ? commands : allProjectFiles;
+                const visibleItems = dataSource.filter(item =>
+                    currentPaletteMode === 'commands'
+                        ? item.name.toLowerCase().includes(searchInput.value.toLowerCase())
+                        : item.path.toLowerCase().includes(searchInput.value.toLowerCase())
+                );
+
+                if (e.key === "Escape") {
+                    palette.classList.remove("active");
+
+                } else if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    if (selectedCommandIndex < visibleItems.length - 1) {
+                        selectedCommandIndex++;
+                        renderPaletteList(searchInput.value);
+                    }
+
+                } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    if (selectedCommandIndex > 0) {
+                        selectedCommandIndex--;
+                        renderPaletteList(searchInput.value);
+                    }
+
+                } else if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (visibleItems.length > 0) {
+                        if (currentPaletteMode === 'commands') {
+                            visibleItems[selectedCommandIndex].action();
+                        } else {
+                            openFileFromQuickOpen(visibleItems[selectedCommandIndex]);
+                        }
+                        palette.classList.remove("active");
+                    }
+                }
+            }
+        });
+
+        searchInput.addEventListener('input', (e) => {
+            selectedCommandIndex = 0;
+            renderPaletteList(e.target.value);
+        });
+
+        // ==========================================
+        //         GLOBAL SEARCH IMPLEMENTATION
+        // ==========================================
+        const globalSearchInput = document.getElementById('global-search-input');
+        const searchResultsList = document.getElementById('search-results-list');
+        let searchDebounceTimeout = null;
+
+        globalSearchInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            clearTimeout(searchDebounceTimeout);
+
+            if (!query) {
+                searchResultsList.innerHTML = "";
+                return;
+            }
+
+            searchDebounceTimeout = setTimeout(async () => {
+                // Execute ipcMain Handler across flattened project files
+                const results = await ipcRenderer.invoke("search-files", query, allProjectFiles);
+                renderSearchResults(results);
+            }, 300); // 300ms debounce
+        });
+
+        function renderSearchResults(results) {
+            searchResultsList.innerHTML = "";
+
+            if (results.length === 0) {
+                const li = document.createElement("li");
+                li.style.padding = "10px 15px";
+                li.style.color = "#858585";
+                li.style.fontSize = "12px";
+                li.textContent = "No results found.";
+                searchResultsList.appendChild(li);
+                return;
+            }
+
+            results.forEach(result => {
+                const li = document.createElement("li");
+                li.className = "search-result";
+
+                const fileSpan = document.createElement("span");
+                fileSpan.className = "search-result-file";
+                fileSpan.textContent = `${result.name} : line ${result.line}`;
+
+                const textSpan = document.createElement("span");
+                textSpan.className = "search-result-text";
+                textSpan.textContent = result.text;
+
+                li.appendChild(fileSpan);
+                li.appendChild(textSpan);
+
+                li.onclick = () => {
+                    openFileFromSearch(result);
+                };
+
+                searchResultsList.appendChild(li);
+            });
+        }
+
+        async function refreshGit() {
+            if (!activeFolderPath) return;
+            const statusList = document.getElementById("git-status-list");
+            statusList.innerHTML = "<li style='padding:10px; font-size:12px; color:#888;'>Checking git status...</li>";
+
+            const results = await ipcRenderer.invoke("git-status", activeFolderPath);
+
+            if (results === "not-git-repo") {
+                statusList.innerHTML = "<li style='padding:10px; font-size:12px; color:#f14c4c;'>Not a git repository.</li>";
+                return;
+            }
+
+            statusList.innerHTML = "";
+            if (results.length === 0) {
+                statusList.innerHTML = "<li style='padding:10px; font-size:12px; color:#888;'>No changes detected.</li>";
+                return;
+            }
+
+            results.forEach(item => {
+                const li = document.createElement("li");
+                li.className = "git-item";
+                li.innerHTML = `
+                    <span>${item.file}</span>
+                    <span class="git-status-tag status-${item.status}">${item.status}</span>
+                `;
+                statusList.appendChild(li);
+            });
+        }
+
+        async function commitChanges() {
+            const msgInput = document.getElementById("git-commit-msg");
+            const message = msgInput.value.trim();
+
+            if (!message) {
+                alert("Please enter a commit message");
+                return;
+            }
+
+            if (!activeFolderPath) return;
+
+            const success = await ipcRenderer.invoke("git-commit", activeFolderPath, message);
+            if (success) {
+                msgInput.value = "";
+                refreshGit();
+            } else {
+                alert("Commit failed. Check console for details.");
+            }
+        }
+
+        async function openFileFromSearch(resultItem) {
+            // Open normal tab process
+            if (!openedFiles[resultItem.path]) {
+                const content = await ipcRenderer.invoke("read-file", resultItem.path);
+                const lang = getLanguage(resultItem.name);
+
+                openedFiles[resultItem.path] = {
+                    name: resultItem.name,
+                    path: resultItem.path,
+                    content: content,
+                    language: lang
+                };
+            }
+            switchTab(resultItem.path);
+
+            // Navigate Monaco Cursor
+            if (window.editor) {
+                // Monaco requires a small tick to mount text model if freshly opened
+                setTimeout(() => {
+                    window.editor.setPosition({ lineNumber: resultItem.line, column: 1 });
+                    window.editor.revealLineInCenter(resultItem.line);
+                    window.editor.focus();
+                }, 50);
+            }
+        }
+
+        // Map Cmd+Shift+F global shortcut to open the sidebar
+        document.addEventListener('keydown', (e) => {
+            const isControlOrCommand = e.metaKey || e.ctrlKey;
+
+            if (isControlOrCommand && e.shiftKey && e.key.toLowerCase() === 'f') {
+                e.preventDefault();
+                switchSidebar('search');
+            }
+        });
+
+        document.getElementById('git-commit-msg').addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault();
+                commitChanges();
+            }
+        });
+
+        // ==========================================
+        //         AI ASSISTANT IMPLEMENTATION
+        // ==========================================
+        let currentAiMode = 'ASK';
+        function setAiMode(mode) {
+            currentAiMode = mode;
+            document.getElementById('ai-mode-ask').classList.toggle('active', mode === 'ASK');
+            document.getElementById('ai-mode-agent').classList.toggle('active', mode === 'AGENT');
+            document.getElementById('ai-input').placeholder = mode === 'ASK' ? "Ask AI a question (Cmd+Enter to send)..." : "Ask Agent to perform a task...";
+        }
+
+        const aiResponse = document.getElementById('ai-response');
+        const aiInput = document.getElementById('ai-input');
+        const aiSend = document.getElementById('ai-send');
+
+        function formatMarkdown(text) {
+            if (!text) return "";
+            // Regex parser for simple markdown code block syntax
+            let formatted = text.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+            // Inline code snippets
+            formatted = formatted.replace(/`([^`]+)`/g, '<code style="background:#3c3c3c;padding:2px 4px;border-radius:3px;">$1</code>');
+            // Bold mapping
+            formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            // Linebreaks escaping explicitly to <br> outside code tags
+            formatted = formatted.replace(/\n/g, '<br>');
+            return formatted;
+        }
+
+        async function submitAiQuery() {
+            const question = aiInput.value.trim();
+            if (!question) return;
+
+            // Print User Query
+            const userMsg = document.createElement('div');
+            userMsg.className = 'ai-message user-message';
+            userMsg.textContent = question;
+            aiResponse.appendChild(userMsg);
+
+            aiInput.value = "";
+            aiResponse.scrollTop = aiResponse.scrollHeight;
+
+            // Extrapolate Active File Array Context automatically!
+            const fileContent = window.editor ? window.editor.getValue() : "";
+
+            // Inject Thinking Box Indicator
+            const botMsg = document.createElement('div');
+            botMsg.className = 'ai-message bot-message';
+            botMsg.innerHTML = "<em>Thinking...</em>";
+            aiResponse.appendChild(botMsg);
+            aiResponse.scrollTop = aiResponse.scrollHeight;
+
+            if (currentAiMode === 'ASK') {
+                // Launch IPC Query
+                const answer = await ipcRenderer.invoke("ai-query", { question, fileContent });
+
+                // Stream parsed response block dynamically returning native html snippets
+                botMsg.innerHTML = formatMarkdown(answer);
+                aiResponse.scrollTop = aiResponse.scrollHeight;
+            } else {
+                // AGENT EXECUTION ENGINE
+                botMsg.innerHTML = "<em>Agent thinking...</em>";
+                
+                const answer = await ipcRenderer.invoke("agent-query", { user_input: question });
+                botMsg.innerHTML = "";
+                
+                try {
+                    let jsonStr = answer;
+                    const match = answer.match(/\[\s*\{[\s\S]*\}\s*\]/);
+                    if (match) {
+                        jsonStr = match[0];
+                    }
+                    
+                    const actions = JSON.parse(jsonStr);
+                    if (!Array.isArray(actions)) throw new Error("Output is not an array");
+
+                    for (const action of actions) {
+                        const stepLog = document.createElement('div');
+                        stepLog.style.fontSize = "12px";
+                        stepLog.style.marginBottom = "5px";
+                        botMsg.appendChild(stepLog);
+
+                        if (action.type === "read_file") {
+                            stepLog.innerHTML = `[Agent] Reading <code>${action.path}</code>...`;
+                            await ipcRenderer.invoke("agent-read-file", action.path);
+                            stepLog.innerHTML += ` <span style="color:#888;">Done.</span>`;
+                        } else if (action.type === "write_file") {
+                            stepLog.innerHTML = `[Agent] Modifying <code>${action.path}</code>...`;
+                            if (confirm(`Agent wants to modify: ${action.path}\n\nAllow?`)) {
+                                const res = await ipcRenderer.invoke("agent-write-file", action);
+                                stepLog.innerHTML += res.success ? ` <strong style="color:#73c991;">Done.</strong>` : ` <strong style="color:#c74e39;">Failed:</strong> ${res.error}`;
+                            } else {
+                                stepLog.innerHTML += ` <span style="color:#e2c08d;">Skipped.</span>`;
+                            }
+                        } else if (action.type === "create_file") {
+                            stepLog.innerHTML = `[Agent] Creating <code>${action.path}</code>...`;
+                            if (confirm(`Agent wants to create: ${action.path}\n\nAllow?`)) {
+                                const res = await ipcRenderer.invoke("agent-create-file", action);
+                                stepLog.innerHTML += res.success ? ` <strong style="color:#73c991;">Done.</strong>` : ` <strong style="color:#c74e39;">Failed:</strong> ${res.error}`;
+                            } else {
+                                stepLog.innerHTML += ` <span style="color:#e2c08d;">Skipped.</span>`;
+                            }
+                        } else if (action.type === "run_terminal") {
+                            stepLog.innerHTML = `[Agent] Executing <code>${action.command}</code>...`;
+                            if (confirm(`Agent wants to run command:\n${action.command}\n\nAllow?`)) {
+                                const res = await ipcRenderer.invoke("agent-run-command", { command: action.command, folderPath: typeof activeFolderPath !== 'undefined' ? activeFolderPath : null });
+                                if (res.success) {
+                                   stepLog.innerHTML += ` <strong style="color:#73c991;">Done.</strong>`;
+                                } else {
+                                   stepLog.innerHTML += ` <strong style="color:#c74e39;">Failed.</strong><pre style="margin-top:4px;font-size:10px;background:#111;padding:4px;">${res.stderr || res.error}</pre>`;
+                                }
+                            } else {
+                                stepLog.innerHTML += ` <span style="color:#e2c08d;">Skipped.</span>`;
+                            }
+                        } else {
+                            stepLog.innerHTML = `[Agent] Unknown action: ${action.type}`;
+                        }
+                        aiResponse.scrollTop = aiResponse.scrollHeight;
+                    }
+                } catch (err) {
+                    botMsg.innerHTML = `<span style="color:#c74e39;">Agent Failed: Cannot parse plan.</span><pre style="font-size:10px; margin-top:5px; background:#111; padding:4px;">${err.message}</pre>`;
+                }
+            }
+        }
+
+        aiSend.addEventListener('click', submitAiQuery);
+
+        aiInput.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault();
+                submitAiQuery();
+            }
+        });
+
+    </script>
+
+    <!-- ELECTRON IPC & LOGIC -->
+    <script>
+        const { ipcRenderer } = window.electron
+
+        // Sidebar Toggling
+        function switchSidebar(panel) {
+            const tabs = ['explorer', 'search', 'git'];
+            tabs.forEach(t => {
+                const tabEl = document.getElementById('tab-' + t);
+                const panelEl = document.getElementById('panel-' + t);
+                if (tabEl) tabEl.classList.toggle('active', t === panel);
+                if (panelEl) panelEl.classList.toggle('active', t === panel);
+            });
+
+            // Ensure sidebar is visible when switching
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar.style.display === 'none') {
+                toggleLayout('sidebar');
+            }
+
+            if (panel === 'search') {
+                setTimeout(() => document.getElementById('global-search-input').focus(), 50);
+            } else if (panel === 'git') {
+                refreshGit();
+                setTimeout(() => document.getElementById('git-commit-msg').focus(), 50);
+            }
+        }
+
+        function toggleLayout(part) {
+            let target;
+            let iconId;
+
+            if (part === 'sidebar') {
+                target = document.querySelector('.sidebar');
+                iconId = 'toggle-sidebar';
+            } else if (part === 'terminal') {
+                target = document.querySelector('.terminal');
+                iconId = 'toggle-terminal';
+            } else if (part === 'ai') {
+                target = document.getElementById('ai-panel');
+                iconId = 'toggle-ai';
+            }
+
+            if (target) {
+                const isHidden = target.style.display === 'none';
+                target.style.display = isHidden ? (part === 'terminal' ? 'block' : 'flex') : 'none';
+                document.getElementById(iconId).classList.toggle('active', isHidden);
+
+                // Force Monaco to recalculate its dimensions immediately
+                if (window.editor) {
+                    window.editor.layout();
+                }
+            }
+        }
+
+        // Map extensions to Monaco languages
+        const getLanguage = (fileName) => {
+            const ext = fileName.split(".").pop().toLowerCase();
+            const map = {
+                "js": "javascript",
+                "ts": "typescript",
+                "html": "html",
+                "css": "css",
+                "json": "json",
+                "md": "markdown",
+                "py": "python"
+            };
+            return map[ext] || "plaintext";
+        };
+
+        let openedFiles = {};
+        let activeTabPath = null;
+        let allProjectFiles = []; // Flattened list for Quick Open
+
+        // Ensure Tabs UI corresponds to active logic
+        function renderTabs() {
+            const tabsContainer = document.getElementById("tabs-container");
+            tabsContainer.innerHTML = "";
+
+            Object.values(openedFiles).forEach(file => {
+                const tab = document.createElement("div");
+                tab.className = "tab " + (file.path === activeTabPath ? "active" : "");
+
+                const title = document.createElement("span");
+                title.textContent = file.name + (file.isUnsaved ? " ●" : "");
+                tab.appendChild(title);
+
+                const closeBtn = document.createElement("span");
+                closeBtn.className = "tab-close";
+                closeBtn.textContent = "×";
+                closeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    closeTab(file.path);
+                };
+                tab.appendChild(closeBtn);
+
+                tab.onclick = () => {
+                    switchTab(file.path);
+                };
+
+                tabsContainer.appendChild(tab);
+            });
+        }
+
+        function closeTab(path) {
+            delete openedFiles[path];
+
+            if (activeTabPath === path) {
+                const remainingPaths = Object.keys(openedFiles);
+                if (remainingPaths.length > 0) {
+                    const newActivePath = remainingPaths[remainingPaths.length - 1];
+                    activeTabPath = newActivePath;
+                    const file = openedFiles[newActivePath];
+                    window.editor.setValue(file.content);
+                    monaco.editor.setModelLanguage(window.editor.getModel(), file.language);
+                } else {
+                    activeTabPath = null;
+                    window.editor.setValue("// Welcome to Vortex IDE\n\nconsole.log('Hello Vortex');");
+                    monaco.editor.setModelLanguage(window.editor.getModel(), "javascript");
+                }
+            }
+
+            renderTabs();
+        }
+
+        let isSwitchingTab = false;
+
+        // Switch to an existing tab or newly opened tab
+        function switchTab(path) {
+            if (!openedFiles[path]) return;
+
+            activeTabPath = path;
+            const file = openedFiles[path];
+
+            // Render updated state
+            renderTabs();
+
+            // Intercept programmatic content switch so we don't trigger the dirty checker
+            isSwitchingTab = true;
+
+            // Set content and language inside Monaco Editor
+            window.editor.setValue(file.content);
+            monaco.editor.setModelLanguage(window.editor.getModel(), file.language);
+
+            isSwitchingTab = false;
+        }
+
+        // Initialize Monaco Dirty Listeners
+        window.addEventListener('load', () => {
+            // Need to wait slightly for Monaco to initialize from its AMD require loader
+            setTimeout(() => {
+                if (window.editor) {
+
+                    window.editor.onDidChangeModelContent(() => {
+                        // Prevent marking 'unsaved' if we are just switching tabs where value updates programmatically
+                        if (isSwitchingTab || !activeTabPath) return;
+
+                        const file = openedFiles[activeTabPath];
+                        if (file && !file.isUnsaved) {
+                            file.isUnsaved = true;
+
+                            // Immediately update content memory so switching retains the latest un-saved edits
+                            file.content = window.editor.getValue();
+
+                            renderTabs();
+                        } else if (file && file.isUnsaved) {
+                            // continually store the unsaved edits as you type into memory
+                            file.content = window.editor.getValue();
+                        }
+                    });
+
+                    // Add Save Keyboard Shortcut (CMD+S / CTRL+S)
+                    window.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, async () => {
+                        if (!activeTabPath) return;
+
+                        const file = openedFiles[activeTabPath];
+                        if (file && file.isUnsaved) {
+
+                            // Send Save to Backend
+                            await window.electron.ipcRenderer.invoke("save-file", {
+                                path: file.path,
+                                content: file.content
+                            });
+
+                            // Remove dirty state
+                            file.isUnsaved = false;
+                            renderTabs();
+                        }
+                    });
+
+                    // Add Inline AI Edit Shortcut Natively Overriding Chord Prefix
+                    window.editor.addAction({
+                        id: 'ai-edit-inline',
+                        label: 'AI: Inline Edit',
+                        keybindings: [
+                            monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK
+                        ],
+                        run: async function (ed) {
+                            let selection = ed.getSelection();
+                            let code = "";
+
+                            if (!selection || selection.isEmpty()) {
+                                const wantsWholeFile = confirm("No code natively selected in Monaco Editor. Do you want AI to process the ENTIRE file instead?");
+                                if (!wantsWholeFile) {
+                                    window.getSelection().removeAllRanges(); // Clear native drag selections 
+                                    return;
+                                }
+
+                                selection = ed.getModel().getFullModelRange();
+                                code = ed.getModel().getValue();
+                            } else {
+                                code = ed.getModel().getValueInRange(selection);
+                            }
+
+                            if (!code || code.trim() === "") {
+                                alert("No code available to edit.");
+                                return;
+                            }
+
+                            const instruction = await askAiInstruction();
+                            if (!instruction || instruction.trim() === "") {
+                                return; // User canceled
+                            }
+
+                            try {
+                                document.body.style.cursor = 'wait';
+
+                                // Auto-switch sidebar so the user can see it!
+                                switchSidebar('ai');
+
+                                // Append User Message to Chatbot
+                                const responseDiv = document.getElementById("ai-response");
+                                const userMsg = document.createElement("div");
+                                userMsg.className = "ai-message user-message";
+                                userMsg.textContent = instruction + "\n(Context provided)";
+                                responseDiv.appendChild(userMsg);
+                                responseDiv.scrollTop = responseDiv.scrollHeight;
+
+                                // Append Loading Bubble
+                                const aiMsg = document.createElement("div");
+                                aiMsg.className = "ai-message bot-message";
+                                aiMsg.innerHTML = `<span class="loading-dots"></span>`;
+                                responseDiv.appendChild(aiMsg);
+                                responseDiv.scrollTop = responseDiv.scrollHeight;
+
+                                // Query AI Assistant endpoint mapping instead!
+                                const result = await window.electron.ipcRenderer.invoke("ai-query", {
+                                    question: instruction,
+                                    fileContent: "'''Selected Context:\n" + code + "\n'''"
+                                });
+
+                                // Append AI Response to Chatbot utilizing existing markdown formatter
+                                aiMsg.innerHTML = formatMarkdown(result);
+                                responseDiv.scrollTop = responseDiv.scrollHeight;
+
+                            } catch (err) {
+                                alert(err.message || "Failed to edit code");
+                            } finally {
+                                document.body.style.cursor = 'default';
+                            }
+                        }
+                    });
+
+                    // Copilot-style AI Autocomplete
+                    let aiAutocompleteToken = 0;
+                    monaco.languages.registerInlineCompletionsProvider('*', {
+                        provideInlineCompletions: async function (model, position, context, token) {
+                            // Only trigger if line is not empty
+                            const currentLine = model.getLineContent(position.lineNumber);
+                            if (currentLine.trim() === "") return { items: [] };
+
+                            // Context size constraint: Get up to 50 lines before the cursor
+                            const startLine = Math.max(1, position.lineNumber - 50);
+                            const prefixRange = new monaco.Range(startLine, 1, position.lineNumber, position.column);
+                            const prefix = model.getValueInRange(prefixRange);
+
+                            return new Promise((resolve) => {
+                                const currentToken = ++aiAutocompleteToken;
+                                
+                                setTimeout(async () => {
+                                    // Make sure it wasn't cancelled by another keystroke or explicitly by user
+                                    if (token.isCancellationRequested || currentToken !== aiAutocompleteToken) {
+                                        return resolve({ items: [] });
+                                    }
+
+                                    try {
+                                        const result = await window.electron.ipcRenderer.invoke("ai-autocomplete", { prefix });
+                                        
+                                        // Final cancellation check post-await
+                                        if (token.isCancellationRequested || !result) {
+                                            return resolve({ items: [] });
+                                        }
+
+                                        resolve({
+                                            items: [{
+                                                insertText: result
+                                            }]
+                                        });
+                                    } catch (err) {
+                                        resolve({ items: [] });
+                                    }
+                                }, 500); // 500ms debounce
+                            });
+                        },
+                        freeInlineCompletions: function () { }
+                    });
+
+                }
+            }, 500);
+        });
+
+        let activeFolderPath = null;
+        ipcRenderer.on("folder-opened", (event, files, rootPath) => {
+            activeFolderPath = rootPath;
+
+            const list = document.getElementById("file-list")
+            list.innerHTML = ""
+            allProjectFiles = [] // reset flattened list
+
+            // Build flattened layout for quick open simultaneously
+            function flattenTree(items) {
+                items.forEach(item => {
+                    if (item.isDirectory) {
+                        flattenTree(item.children);
+                    } else {
+                        allProjectFiles.push(item);
+                    }
+                })
+            }
+            flattenTree(files)
+
+            // Recursive rendering logic
+            function renderTree(items, parentElement, depth = 0) {
+                items.forEach(item => {
+                    const li = document.createElement("li")
+                    const itemDiv = document.createElement("div")
+
+                    itemDiv.className = "explorer-item " + (item.isDirectory ? "folder" : "file")
+                    itemDiv.style.paddingLeft = (depth * 14 + 10) + "px"
+
+                    const chevron = document.createElement("span")
+                    chevron.className = "explorer-chevron"
+                    chevron.textContent = item.isDirectory ? "❯" : ""
+
+                    const icon = document.createElement("span")
+                    icon.className = "explorer-icon"
+
+                    if (item.isDirectory) {
+                        icon.innerHTML = "📁"
+                    } else {
+                        if (item.name.endsWith('.js')) {
+                            icon.innerHTML = "JS"; icon.className += " icon-js"
+                        } else if (item.name.endsWith('.json') || item.name.endsWith('.lock')) {
+                            icon.innerHTML = "{}"; icon.className += " icon-json"
+                        } else if (item.name.endsWith('.html')) {
+                            icon.innerHTML = "&lt;&gt;"; icon.className += " icon-html"
+                        } else if (item.name.endsWith('.css')) {
+                            icon.innerHTML = "#"; icon.className += " icon-css"
+                        } else if (item.name.endsWith('.md')) {
+                            icon.innerHTML = "i"; icon.className += " icon-md"
+                        } else {
+                            icon.innerHTML = "📄"
+                        }
+                    }
+
+                    const nameSpan = document.createElement("span")
+                    nameSpan.textContent = item.name
+
+                    itemDiv.appendChild(chevron)
+                    itemDiv.appendChild(icon)
+                    itemDiv.appendChild(nameSpan)
+
+                    li.appendChild(itemDiv)
+
+                    // Bind Folder click behavior
+                    if (item.isDirectory) {
+                        const childUl = document.createElement("ul")
+                        childUl.className = "explorer-children"
+                        renderTree(item.children, childUl, depth + 1)
+                        li.appendChild(childUl)
+
+                        itemDiv.onclick = (e) => {
+                            e.stopPropagation()
+                            childUl.classList.toggle("open")
+                            itemDiv.classList.toggle("open")
+                        }
+
+                        // Bind File Click Behavior
+                    } else {
+                        itemDiv.onclick = async (e) => {
+                            e.stopPropagation()
+
+                            // Check if file is already open
+                            if (openedFiles[item.path]) {
+                                switchTab(item.path);
+                                return;
+                            }
+
+                            // If not, fetch it asynchronously via IPC
+                            const content = await ipcRenderer.invoke("read-file", item.path);
+                            const lang = getLanguage(item.name);
+
+                            // Store it into the Memory Pool
+                            openedFiles[item.path] = {
+                                name: item.name,
+                                path: item.path,
+                                content: content,
+                                language: lang
+                            };
+
+                            // Activate and Switch
+                            switchTab(item.path);
+                        }
+                    }
+
+                    parentElement.appendChild(li)
+                })
+            }
+
+            renderTree(files, list)
+
+        })
+
+    </script>
+
+</body>
+
+</html>
